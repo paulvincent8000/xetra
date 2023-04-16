@@ -2,7 +2,10 @@
 
 import logging
 import os
+from io import StringIO
+
 import boto3
+import pandas as pd
 
 class S3BucketConnector():
 
@@ -18,14 +21,14 @@ class S3BucketConnector():
         :param bucket: s3 bucket name
         '''
 
-        self.logger=logging.getLogger(name=__name__)
+        self._logger=logging.getLogger(name=__name__)
         self.endpoint_url = endpoint_url
         self.session = boto3.Session( aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID"),
                                 aws_secret_access_key= os.environ.get("AWS_SECRET_ACCESS_KEY"))
         self._s3 = self.session.resource(service_name='s3', endpoint_url=endpoint_url)
         self._bucket = self._s3.Bucket(bucket)
 
-        
+
     def list_files_in_prefix(self, prefix: str) -> list:
         '''
         List all files in the s3 bucket
@@ -38,13 +41,26 @@ class S3BucketConnector():
         files = [obj.key for obj in self._bucket.objects.filter(Prefix=prefix)]
         return files
 
-    def read_csv_to_df(self) -> None:
-        ''''''
-        pass
+    def read_csv_to_df(self, key: str, encoding: str = 'utf-8', sep: str = ',') -> pd.DataFrame:
+        '''
+        Read csv files from 3s bucket into a dataframe
+        
+        :param key: the key that identifies the csv file in the s3 bucket
+        :param decoding: the decoding used in the csv file. Defaults to utf-8.
+        :param sep: the delimiter used in the csv file. Defaults to comma.
+
+        return:
+          dataframe filled with contents of csv file
+        '''
+
+        self._logger.info(f'Reading file {self.endpoint_url}/{self._bucket.name,}/{key}')
+        csv_obj = self._bucket.Object(key=key).get().get('Body').read().decode(encoding)
+        data = StringIO(csv_obj)
+        data_frame = pd.read_csv(data, delimiter=sep)
+        return data_frame
 
     def write_df_to_s3(self):
-        ''''''
-        pass
+        '''Write contents of a dataframe to a bucket in s3'''
 
     def __str__(self):
         pass
